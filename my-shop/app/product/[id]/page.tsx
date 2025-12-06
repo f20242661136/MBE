@@ -113,7 +113,7 @@ export default async function ProductPage({ params }: { params: { id: string } }
       url: `https://eshop-pk.com/product/${product.id}`,
       priceCurrency: 'PKR',
       price: product.price,
-      priceValidUntil: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+      priceValidUntil: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0] as string,
       availability: product.stock_quantity > 0 
         ? 'https://schema.org/InStock'
         : 'https://schema.org/OutOfStock',

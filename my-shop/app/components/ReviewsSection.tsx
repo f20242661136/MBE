@@ -33,7 +33,7 @@ export default function ReviewsSection({ productId }: ReviewsSectionProps) {
 
   useEffect(() => {
     fetchReviews()
-  }, [productId])
+  }, [productId, fetchReviews])
 
   async function fetchReviews() {
     const { data, error } = await supabase

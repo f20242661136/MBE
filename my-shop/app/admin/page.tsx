@@ -10,7 +10,7 @@ import { useToast } from "@/hooks/use-toast"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { Upload, X, Plus, Edit, Trash2 } from 'lucide-react'
+import { X, Plus, Trash2 } from 'lucide-react'
 
 const CATEGORIES = [
   'Smartphones', 'Laptops', 'Tablets', 'Headphones', 'Gaming', 'Wearables',

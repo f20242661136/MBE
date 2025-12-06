@@ -101,7 +101,7 @@ export default function RelatedProducts({ currentProductId, category }: RelatedP
           >
             <div className="relative aspect-square mb-4 overflow-hidden rounded-xl bg-gradient-to-br from-gray-50 to-gray-100">
               <Image
-                src={product.image_url && product.image_url.startsWith('http') ? product.image_url : '/placeholder-product.svg'}
+                src={product.image_urls?.[0] && product.image_urls[0].startsWith('http') ? product.image_urls[0] : '/placeholder-product.svg'}
                 alt={product.title}
                 fill
                 className="object-cover group-hover:scale-105 transition-transform duration-300"
