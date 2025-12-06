@@ -18,7 +18,7 @@ interface RelatedProduct {
   id: number
   title: string
   price: number
-  image_url: string
+  image_urls: string[]
   rating: number
   review_count: number
   stock_quantity: number
@@ -39,7 +39,7 @@ export default function RelatedProducts({ currentProductId, category }: RelatedP
       try {
         const { data, error } = await supabase
           .from('products')
-          .select('id, title, price, image_url, rating, review_count, stock_quantity')
+          .select('id, title, price, image_urls, rating, review_count, stock_quantity')
           .eq('category', category)
           .neq('id', currentProductId)
           .eq('is_active', true)

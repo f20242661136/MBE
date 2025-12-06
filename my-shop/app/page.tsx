@@ -26,7 +26,7 @@ interface Product {
   id: number
   title: string
   price: number
-  image_url: string
+  image_urls: string[]
   category: string
   rating: number
   review_count: number
@@ -171,7 +171,7 @@ export default function Home() {
                       {/* Product Image */}
                       <div className="relative aspect-square overflow-hidden bg-gradient-to-br from-gray-50 to-gray-100">
                         <Image
-                          src={product.image_url && product.image_url.startsWith('http') ? product.image_url : '/placeholder-product.svg'}
+                          src={product.image_urls && product.image_urls.length > 0 && product.image_urls[0].startsWith('http') ? product.image_urls[0] : '/placeholder-product.svg'}
                           alt={product.title}
                           fill
                           sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"

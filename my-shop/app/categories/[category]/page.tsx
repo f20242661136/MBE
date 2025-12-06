@@ -1,6 +1,6 @@
 import { notFound } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
-import ProductGrid from '@/app/components/ProductGrid'
+import ProductGrid from '@/components/ProductGrid'
 
 const formatCategoryName = (slug: string) => {
   return slug

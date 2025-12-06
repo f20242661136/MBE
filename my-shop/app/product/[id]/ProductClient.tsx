@@ -23,6 +23,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useToast } from "@/hooks/use-toast"
 import { supabase } from '@/lib/supabase'
 import RelatedProducts from './RelatedProducts'
+import ReviewsSection from '@/components/ReviewsSection'
 
 const formatPKR = (amount: number) => 
   new Intl.NumberFormat('en-PK', { 
@@ -36,12 +37,12 @@ interface ProductClientProps {
     id: number
     title: string
     price: number
-    image_url: string
+    image_urls: string[]
     description: string
     category: string
     rating: number
     review_count: number
-    specifications: Record<string, string>
+    specifications: Record<string, any>
     stock_quantity: number
   }
 }
@@ -69,9 +70,9 @@ export default function ProductClient({ product }: ProductClientProps) {
   })
 
   const productImages = [
-    product.image_url,
-    ...(Array.isArray(product.specifications?.additional_images) 
-      ? product.specifications.additional_images 
+    ...(product.image_urls && product.image_urls.length > 0 ? product.image_urls : []),
+    ...(Array.isArray(product.specifications?.additional_images)
+      ? product.specifications.additional_images
       : [])
   ]
 
@@ -349,10 +350,12 @@ export default function ProductClient({ product }: ProductClientProps) {
               <h1 className="text-3xl md:text-4xl font-bold text-gray-900 mb-4">
                 {product.title}
               </h1>
-              
-              <p className="text-gray-600 text-lg mb-6 leading-relaxed">
-                {product.description}
-              </p>
+
+              {product.description && (
+                <p className="text-gray-600 text-lg mb-6 leading-relaxed">
+                  {product.description}
+                </p>
+              )}
               
               {/* Price */}
               <div className="flex items-baseline space-x-4 mb-6">
@@ -532,6 +535,9 @@ export default function ProductClient({ product }: ProductClientProps) {
             </a>
           </div>
         </div>
+
+        {/* Reviews Section */}
+        <ReviewsSection productId={product.id} />
 
         {/* Related Products Section */}
         <RelatedProducts currentProductId={product.id} category={product.category} />

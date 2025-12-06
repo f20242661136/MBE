@@ -15,12 +15,12 @@ interface Product {
   id: number
   title: string
   price: number
-  image_url: string
+  image_urls: string[]
   description: string
   category: string
   rating: number
   review_count: number
-  specifications: Record<string, string>
+  specifications: Record<string, any>
   stock_quantity: number
 }
 
@@ -52,13 +52,13 @@ export async function generateMetadata({ params }: { params: { id: string } }): 
     openGraph: {
       title: `${product.title} | E-Shop Pakistan`,
       description: product.description || `Best price for ${product.title} in Pakistan`,
-      images: [product.image_url],
+      images: product.image_urls && product.image_urls.length > 0 ? [product.image_urls[0]] : [],
     },
     twitter: {
       card: 'summary_large_image',
       title: `${product.title} | E-Shop Pakistan`,
       description: product.description || `Get ${product.title} at best price in Pakistan`,
-      images: [product.image_url],
+      images: product.image_urls && product.image_urls.length > 0 ? [product.image_urls[0]] : [],
     },
     alternates: {
       canonical: `/product/${product.id}`,
@@ -101,7 +101,7 @@ export default async function ProductPage({ params }: { params: { id: string } }
     '@context': 'https://schema.org/',
     '@type': 'Product',
     name: product.title,
-    image: product.image_url,
+    image: product.image_urls && product.image_urls.length > 0 ? product.image_urls[0] : '',
     description: product.description,
     sku: `PROD-${product.id}`,
     brand: {
