@@ -19,17 +19,43 @@ export default async function CategoryPage({ params }: CategoryPageProps) {
   const resolvedParams = await params
   const categoryName = formatCategoryName(resolvedParams.category)
 
-  const { data: products, error } = await supabase
+  const { data: productsData, error: productsError } = await supabase
     .from('products')
     .select('*')
     .eq('category', categoryName)
     .eq('is_active', true)
     .order('created_at', { ascending: false })
 
-  if (error) {
-    console.error('Error fetching products:', error)
+  if (productsError) {
+    console.error('Error fetching products:', productsError)
     notFound()
   }
+
+  // Fetch reviews for each product to calculate dynamic ratings
+  const products = await Promise.all(
+    (productsData || []).map(async (product) => {
+      const { data: reviews, error: reviewsError } = await supabase
+        .from('reviews')
+        .select('rating')
+        .eq('product_id', product.id)
+
+      if (reviewsError) {
+        console.error('Error fetching reviews for product', product.id, reviewsError)
+        return { ...product, rating: product.rating, review_count: product.review_count }
+      }
+
+      const reviewCount = reviews?.length || 0
+      const averageRating = reviewCount > 0
+        ? reviews!.reduce((sum, review) => sum + review.rating, 0) / reviewCount
+        : product.rating
+
+      return {
+        ...product,
+        rating: Math.round(averageRating * 10) / 10, // Round to 1 decimal
+        review_count: reviewCount
+      }
+    })
+  )
 
   return (
     <div className="min-h-screen bg-gray-50">

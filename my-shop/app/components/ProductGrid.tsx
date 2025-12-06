@@ -4,6 +4,7 @@ import Link from 'next/link'
 import Image from 'next/image'
 import { Star } from 'lucide-react'
 import { Badge } from "@/components/ui/badge"
+import { Skeleton } from "@/components/ui/skeleton"
 
 const formatPKR = (amount: number) =>
   new Intl.NumberFormat('en-PK', {
@@ -25,9 +26,24 @@ interface Product {
 
 interface ProductGridProps {
   products: Product[]
+  loading?: boolean
 }
 
-export default function ProductGrid({ products }: ProductGridProps) {
+export default function ProductGrid({ products, loading = false }: ProductGridProps) {
+  if (loading) {
+    return (
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8">
+        {[...Array(8)].map((_, i) => (
+          <div key={i} className="space-y-4">
+            <Skeleton className="aspect-square w-full rounded-2xl" />
+            <Skeleton className="h-4 w-3/4" />
+            <Skeleton className="h-4 w-1/2" />
+          </div>
+        ))}
+      </div>
+    )
+  }
+
   return (
     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8">
       {products.map((product) => (
@@ -82,8 +98,8 @@ export default function ProductGrid({ products }: ProductGridProps) {
               </h3>
 
               {/* Rating */}
-              <div className="flex items-center mb-4">
-                <div className="flex">
+              <div className="flex items-center mb-4" role="group" aria-label={`Rating: ${product.rating} out of 5 stars`}>
+                <div className="flex" aria-hidden="true">
                   {[...Array(5)].map((_, i) => (
                     <Star
                       key={i}
@@ -95,7 +111,7 @@ export default function ProductGrid({ products }: ProductGridProps) {
                     />
                   ))}
                 </div>
-                <span className="ml-2 text-sm text-gray-600">
+                <span className="ml-2 text-sm text-gray-600" aria-label={`${product.review_count} reviews`}>
                   ({product.review_count})
                 </span>
               </div>

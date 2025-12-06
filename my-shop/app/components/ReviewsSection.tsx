@@ -148,12 +148,15 @@ export default function ReviewsSection({ productId }: ReviewsSectionProps) {
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 Rating
               </label>
-              <div className="flex space-x-1">
+              <div className="flex space-x-1" role="radiogroup" aria-label="Select rating">
                 {[1, 2, 3, 4, 5].map((star) => (
                   <button
                     key={star}
                     onClick={() => setNewReview({...newReview, rating: star})}
-                    className="focus:outline-none"
+                    className="focus:outline-none focus:ring-2 focus:ring-emerald-500 rounded"
+                    role="radio"
+                    aria-checked={newReview.rating === star}
+                    aria-label={`${star} star${star !== 1 ? 's' : ''}`}
                   >
                     <Star
                       className={`w-6 h-6 ${

@@ -22,34 +22,15 @@ import {
   X,
   SlidersHorizontal
 } from 'lucide-react'
-
-const formatPKR = (amount: number) =>
-  new Intl.NumberFormat('en-PK', {
-    style: 'currency',
-    currency: 'PKR',
-    maximumFractionDigits: 0
-  }).format(amount)
-
-interface Product {
-  id: number
-  title: string
-  price: number
-  image_urls: string[]
-  category: string
-  rating: number
-  review_count: number
-  stock_quantity: number
-  is_featured?: boolean
-  is_active: boolean
-  created_at: string
-}
+import { formatPKR, getImageUrl, handleImageError, MAX_PRICE_RANGE } from '@/lib/utils'
+import { Product } from '@/lib/types'
 
 export default function ProductsPage() {
   const [products, setProducts] = useState<Product[]>([])
   const [loading, setLoading] = useState(true)
   const [searchQuery, setSearchQuery] = useState('')
   const [selectedCategory, setSelectedCategory] = useState<string>('all')
-  const [priceRange, setPriceRange] = useState<[number, number]>([0, 500000])
+  const [priceRange, setPriceRange] = useState<[number, number]>([0, MAX_PRICE_RANGE])
   const [sortBy, setSortBy] = useState<string>('newest')
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid')
   const [showFilters, setShowFilters] = useState(false)
@@ -63,14 +44,41 @@ export default function ProductsPage() {
   async function fetchProducts() {
     try {
       setLoading(true)
-      const { data, error } = await supabase
+      const { data: productsData, error: productsError } = await supabase
         .from('products')
         .select('*')
         .eq('is_active', true)
         .order('created_at', { ascending: false })
 
-      if (error) throw error
-      setProducts(data || [])
+      if (productsError) throw productsError
+
+      // Fetch reviews for each product to calculate dynamic ratings
+      const productsWithReviews = await Promise.all(
+        (productsData || []).map(async (product) => {
+          const { data: reviews, error: reviewsError } = await supabase
+            .from('reviews')
+            .select('rating')
+            .eq('product_id', product.id)
+
+          if (reviewsError) {
+            console.error('Error fetching reviews for product', product.id, reviewsError)
+            return { ...product, rating: product.rating, review_count: product.review_count }
+          }
+
+          const reviewCount = reviews?.length || 0
+          const averageRating = reviewCount > 0
+            ? reviews!.reduce((sum, review) => sum + review.rating, 0) / reviewCount
+            : product.rating
+
+          return {
+            ...product,
+            rating: Math.round(averageRating * 10) / 10, // Round to 1 decimal
+            review_count: reviewCount
+          }
+        })
+      )
+
+      setProducts(productsWithReviews)
     } catch (error) {
       console.error('Error fetching products:', error)
     } finally {
@@ -130,7 +138,7 @@ export default function ProductsPage() {
   const clearFilters = () => {
     setSearchQuery('')
     setSelectedCategory('all')
-    setPriceRange([0, 500000])
+    setPriceRange([0, MAX_PRICE_RANGE])
     setSortBy('newest')
   }
 
@@ -139,13 +147,12 @@ export default function ProductsPage() {
       <Card className="h-full overflow-hidden hover:shadow-xl transition-all duration-300 border-0 shadow-lg hover:-translate-y-1">
         <div className="relative aspect-square overflow-hidden bg-gradient-to-br from-gray-50 to-gray-100">
           <Image
-            src={product.image_urls && product.image_urls.length > 0 && product.image_urls[0].startsWith('http')
-              ? product.image_urls[0]
-              : '/placeholder-product.svg'}
+            src={getImageUrl(product.image_urls)}
             alt={product.title}
             fill
             sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
             className="object-cover group-hover:scale-105 transition-transform duration-500"
+            onError={handleImageError}
           />
 
           <div className="absolute top-4 left-4">
@@ -222,13 +229,12 @@ export default function ProductsPage() {
           <div className="flex gap-6">
             <div className="relative w-32 h-32 flex-shrink-0 overflow-hidden rounded-xl bg-gradient-to-br from-gray-50 to-gray-100">
               <Image
-                src={product.image_urls && product.image_urls.length > 0 && product.image_urls[0].startsWith('http')
-                  ? product.image_urls[0]
-                  : '/placeholder-product.svg'}
+                src={getImageUrl(product.image_urls)}
                 alt={product.title}
                 fill
                 sizes="128px"
                 className="object-cover group-hover:scale-105 transition-transform duration-500"
+                onError={handleImageError}
               />
             </div>
 

@@ -4,11 +4,11 @@
 import { useState, FormEvent } from 'react'
 import { useRouter } from 'next/navigation'
 import Image from 'next/image'
-import { 
-  Truck, 
-  Shield, 
-  CheckCircle, 
-  Star, 
+import {
+  Truck,
+  Shield,
+  CheckCircle,
+  Star,
   Phone,
   Package,
   Clock,
@@ -20,17 +20,13 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Skeleton } from "@/components/ui/skeleton"
 import { useToast } from "@/hooks/use-toast"
 import { supabase } from '@/lib/supabase'
+import { formatPKR, getImageUrl, handleImageError } from '@/lib/utils'
+import { Product } from '@/lib/types'
 import RelatedProducts from './RelatedProducts'
 import ReviewsSection from '@/components/ReviewsSection'
-
-const formatPKR = (amount: number) => 
-  new Intl.NumberFormat('en-PK', { 
-    style: 'currency', 
-    currency: 'PKR', 
-    maximumFractionDigits: 0 
-  }).format(amount)
 
 interface ProductClientProps {
   product: {
@@ -170,8 +166,21 @@ export default function ProductClient({ product }: ProductClientProps) {
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-gray-50 to-white">
+      {/* Skip Links for Accessibility */}
+      <div className="sr-only focus:not-sr-only focus:absolute focus:top-0 focus:left-0 focus:z-50 focus:bg-white focus:p-4 focus:border focus:border-gray-300">
+        <a href="#main-content" className="focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2 px-4 py-2 bg-emerald-600 text-white rounded mr-4">
+          Skip to main content
+        </a>
+        <a href="#order-form" className="focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2 px-4 py-2 bg-emerald-600 text-white rounded mr-4">
+          Skip to order form
+        </a>
+        <a href="#reviews" className="focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2 px-4 py-2 bg-emerald-600 text-white rounded">
+          Skip to reviews
+        </a>
+      </div>
+
       {/* Breadcrumb */}
-      <nav className="bg-white border-b border-gray-100">
+      <nav className="bg-white border-b border-gray-100" aria-label="Breadcrumb">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
           <div className="flex items-center text-sm text-gray-600">
             <Button
@@ -191,11 +200,11 @@ export default function ProductClient({ product }: ProductClientProps) {
         </div>
       </nav>
 
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <main id="main-content" className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
-          
+
           {/* Left Column - Images */}
-          <div className="space-y-6">
+          <section className="space-y-6" aria-labelledby="product-images">
             {/* Main Image */}
             <div className="relative aspect-square bg-gradient-to-br from-gray-50 to-gray-100 rounded-3xl overflow-hidden border border-gray-200 shadow-lg">
               <Image
@@ -232,12 +241,14 @@ export default function ProductClient({ product }: ProductClientProps) {
               </div>
               
               {/* Action Buttons */}
-              <div className="absolute top-4 right-4 flex space-x-2">
+              <div className="absolute top-4 right-4 flex space-x-2" role="group" aria-label="Product actions">
                 <Button
                   variant="secondary"
                   size="icon"
                   onClick={() => setIsFavorite(!isFavorite)}
                   className="bg-white/80 backdrop-blur-sm hover:bg-white"
+                  aria-label={isFavorite ? "Remove from favorites" : "Add to favorites"}
+                  aria-pressed={isFavorite}
                 >
                   <Heart className={`w-5 h-5 ${isFavorite ? 'fill-red-500 text-red-500' : ''}`} />
                 </Button>
@@ -246,6 +257,7 @@ export default function ProductClient({ product }: ProductClientProps) {
                   size="icon"
                   onClick={shareProduct}
                   className="bg-white/80 backdrop-blur-sm hover:bg-white"
+                  aria-label="Share product"
                 >
                   <Share2 className="w-5 h-5" />
                 </Button>
@@ -254,20 +266,39 @@ export default function ProductClient({ product }: ProductClientProps) {
 
             {/* Thumbnail Gallery */}
             {productImages.length > 1 && (
-              <div className="grid grid-cols-4 gap-4">
+              <div
+                className="grid grid-cols-4 gap-4"
+                role="tablist"
+                aria-label="Product image gallery"
+                onKeyDown={(e) => {
+                  if (e.key === 'ArrowLeft') {
+                    e.preventDefault()
+                    setSelectedImage((prev) => (prev > 0 ? prev - 1 : productImages.length - 1))
+                  } else if (e.key === 'ArrowRight') {
+                    e.preventDefault()
+                    setSelectedImage((prev) => (prev < productImages.length - 1 ? prev + 1 : 0))
+                  }
+                }}
+              >
                 {productImages.map((img, index) => (
                   <button
                     key={index}
                     onClick={() => setSelectedImage(index)}
-                    className={`relative aspect-square rounded-xl overflow-hidden border-2 ${
-                      selectedImage === index 
+                    role="tab"
+                    aria-selected={selectedImage === index}
+                    aria-controls={`image-${index}`}
+                    tabIndex={selectedImage === index ? 0 : -1}
+                    className={`relative aspect-square rounded-xl overflow-hidden border-2 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2 ${
+                      selectedImage === index
                         ? 'border-emerald-500 ring-2 ring-emerald-200'
                         : 'border-gray-200'
                     } transition-all`}
+                    aria-label={`View ${product.title} image ${index + 1} of ${productImages.length}`}
                   >
                     <Image
+                      id={`image-${index}`}
                       src={img}
-                      alt={`${product.title} view ${index + 1}`}
+                      alt={`${product.title} view ${index + 1} of ${productImages.length}`}
                       fill
                       className="object-cover"
                     />
@@ -276,49 +307,7 @@ export default function ProductClient({ product }: ProductClientProps) {
               </div>
             )}
 
-            {/* Product Features */}
-            <div className="grid grid-cols-2 gap-4">
-              <div className="p-4 bg-gradient-to-br from-emerald-50 to-green-50 rounded-2xl border border-emerald-100">
-                <div className="flex items-center space-x-3">
-                  <Truck className="w-8 h-8 text-emerald-600" />
-                  <div>
-                    <h4 className="font-semibold text-gray-900">Free Delivery</h4>
-                    <p className="text-sm text-gray-600">3-7 days across Pakistan</p>
-                  </div>
-                </div>
-              </div>
-              
-              <div className="p-4 bg-gradient-to-br from-blue-50 to-cyan-50 rounded-2xl border border-blue-100">
-                <div className="flex items-center space-x-3">
-                  <Shield className="w-8 h-8 text-blue-600" />
-                  <div>
-                    <h4 className="font-semibold text-gray-900">7-Day Warranty</h4>
-                    <p className="text-sm text-gray-600">Check before paying</p>
-                  </div>
-                </div>
-              </div>
-              
-              <div className="p-4 bg-gradient-to-br from-amber-50 to-orange-50 rounded-2xl border border-amber-100">
-                <div className="flex items-center space-x-3">
-                  <Package className="w-8 h-8 text-amber-600" />
-                  <div>
-                    <h4 className="font-semibold text-gray-900">Original Packaging</h4>
-                    <p className="text-sm text-gray-600">Sealed & Authentic</p>
-                  </div>
-                </div>
-              </div>
-              
-              <div className="p-4 bg-gradient-to-br from-purple-50 to-pink-50 rounded-2xl border border-purple-100">
-                <div className="flex items-center space-x-3">
-                  <Clock className="w-8 h-8 text-purple-600" />
-                  <div>
-                    <h4 className="font-semibold text-gray-900">24/7 Support</h4>
-                    <p className="text-sm text-gray-600">Call or WhatsApp</p>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
+          </section>
 
           {/* Right Column - Product Info & Order Form */}
           <div className="space-y-8">
@@ -421,45 +410,53 @@ export default function ProductClient({ product }: ProductClientProps) {
                 </div>
               </div>
 
-              <div className="space-y-4">
+              <fieldset className="space-y-4">
+                <legend className="sr-only">Customer Information</legend>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <label htmlFor="customer-name" className="block text-sm font-medium text-gray-700 mb-2">
                     Full Name <span className="text-red-500">*</span>
                   </label>
                   <Input
+                    id="customer-name"
                     required
                     placeholder="Enter your full name"
                     value={form.name}
                     onChange={(e) => setForm({...form, name: e.target.value})}
                     className="h-12 text-base"
+                    aria-describedby="name-help"
                   />
+                  <span id="name-help" className="sr-only">Enter your complete full name as it appears on your ID</span>
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                    <label htmlFor="customer-phone" className="block text-sm font-medium text-gray-700 mb-2">
                       Phone Number <span className="text-red-500">*</span>
                     </label>
                     <Input
+                      id="customer-phone"
                       required
                       type="tel"
                       placeholder="03001234567"
                       value={form.phone}
                       onChange={(e) => setForm({...form, phone: e.target.value})}
                       className="h-12 text-base"
+                      aria-describedby="phone-help phone-error"
+                      pattern="^(03[0-9]{9}|^\+923[0-9]{9})$"
                     />
-                    <p className="text-xs text-gray-500 mt-1">Enter 11-digit number starting with 03</p>
+                    <p id="phone-help" className="text-xs text-gray-500 mt-1">Enter 11-digit number starting with 03</p>
+                    <div id="phone-error" className="sr-only" aria-live="polite"></div>
                   </div>
 
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                    <label htmlFor="customer-city" className="block text-sm font-medium text-gray-700 mb-2">
                       City <span className="text-red-500">*</span>
                     </label>
                     <Select
                       value={form.city}
                       onValueChange={(value) => setForm({...form, city: value})}
                     >
-                      <SelectTrigger className="h-12 text-base" suppressHydrationWarning>
+                      <SelectTrigger id="customer-city" className="h-12 text-base" suppressHydrationWarning>
                         <SelectValue placeholder="Select city" />
                       </SelectTrigger>
                       <SelectContent>
@@ -474,19 +471,22 @@ export default function ProductClient({ product }: ProductClientProps) {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <label htmlFor="customer-address" className="block text-sm font-medium text-gray-700 mb-2">
                     Complete Address <span className="text-red-500">*</span>
                   </label>
                   <Textarea
+                    id="customer-address"
                     required
                     placeholder="House #, Street, Area, Landmark..."
                     value={form.address}
                     onChange={(e) => setForm({...form, address: e.target.value})}
                     rows={3}
                     className="resize-none text-base"
+                    aria-describedby="address-help"
                   />
+                  <span id="address-help" className="sr-only">Provide complete delivery address including house number, street, area, and landmark</span>
                 </div>
-              </div>
+              </fieldset>
 
               <Button
                 type="submit"
@@ -519,7 +519,7 @@ export default function ProductClient({ product }: ProductClientProps) {
 
             {/* WhatsApp Order Button */}
             <a
-              href={`https://wa.me/923000000000?text=I want to order ${encodeURIComponent(product.title)} - ${formatPKR(product.price)}`}
+              href={`https://wa.me/923057826091?text=I want to order ${encodeURIComponent(product.title)} - ${formatPKR(product.price)}`}
               target="_blank"
               rel="noopener noreferrer"
               className="block"
@@ -537,11 +537,14 @@ export default function ProductClient({ product }: ProductClientProps) {
         </div>
 
         {/* Reviews Section */}
-        <ReviewsSection productId={product.id} />
+        <section id="reviews" aria-labelledby="reviews-heading">
+          <h2 id="reviews-heading" className="sr-only">Customer Reviews</h2>
+          <ReviewsSection productId={product.id} />
+        </section>
 
         {/* Related Products Section */}
         <RelatedProducts currentProductId={product.id} category={product.category} />
-      </div>
+      </main>
     </div>
   )
 }

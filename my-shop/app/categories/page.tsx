@@ -49,38 +49,59 @@ const CATEGORIES = [
     color: 'from-orange-500 to-red-600'
   },
   {
-    name: 'Cameras',
-    slug: 'cameras',
-    icon: Camera,
-    description: 'DSLR, mirrorless and action cameras',
-    color: 'from-teal-500 to-green-600'
+    name: 'Clothing & Shoes',
+    slug: 'clothing-shoes',
+    icon: MoreHorizontal,
+    description: 'Fashion, apparel and footwear',
+    color: 'from-pink-500 to-rose-600'
   },
   {
-    name: 'Accessories',
-    slug: 'accessories',
-    icon: Zap,
-    description: 'Phone cases, chargers and more',
-    color: 'from-gray-500 to-gray-600'
-  },
-  {
-    name: 'Home Appliances',
-    slug: 'home-appliances',
+    name: 'Home & Kitchen',
+    slug: 'home-kitchen',
     icon: Home,
-    description: 'Kitchen and home electronics',
+    description: 'Kitchen appliances and home essentials',
     color: 'from-yellow-500 to-orange-600'
   },
   {
-    name: 'TV & Audio',
-    slug: 'tv-audio',
-    icon: Tv,
-    description: 'Televisions and sound systems',
-    color: 'from-cyan-500 to-blue-600'
+    name: 'Books',
+    slug: 'books',
+    icon: MoreHorizontal,
+    description: 'Books, novels and educational materials',
+    color: 'from-amber-500 to-yellow-600'
   },
   {
-    name: 'Other',
-    slug: 'other',
+    name: 'Sports & Outdoors',
+    slug: 'sports-outdoors',
     icon: MoreHorizontal,
-    description: 'Miscellaneous products',
+    description: 'Sports equipment and outdoor gear',
+    color: 'from-lime-500 to-green-600'
+  },
+  {
+    name: 'Beauty & Personal Care',
+    slug: 'beauty-personal-care',
+    icon: MoreHorizontal,
+    description: 'Skincare, cosmetics and personal care',
+    color: 'from-fuchsia-500 to-pink-600'
+  },
+  {
+    name: 'Toys & Games',
+    slug: 'toys-games',
+    icon: MoreHorizontal,
+    description: 'Toys, games and entertainment',
+    color: 'from-violet-500 to-purple-600'
+  },
+  {
+    name: 'Furniture',
+    slug: 'furniture',
+    icon: MoreHorizontal,
+    description: 'Home and office furniture',
+    color: 'from-stone-500 to-gray-600'
+  },
+  {
+    name: 'Automotive',
+    slug: 'automotive',
+    icon: MoreHorizontal,
+    description: 'Car accessories and automotive products',
     color: 'from-slate-500 to-gray-600'
   }
 ]

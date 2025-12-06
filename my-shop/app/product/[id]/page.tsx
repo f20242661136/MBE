@@ -1,8 +1,10 @@
 // app/product/[id]/page.tsx
 import { Metadata } from 'next'
 import { notFound } from 'next/navigation'
+import { Suspense } from 'react'
 import { supabase } from '@/lib/supabase'
 import ProductClient from './ProductClient'
+import ProductSkeleton from '@/components/ProductSkeleton'
 
 const formatPKR = (amount: number) => 
   new Intl.NumberFormat('en-PK', { 
@@ -156,7 +158,9 @@ export default async function ProductPage({ params }: { params: { id: string } }
           __html: JSON.stringify(productStructuredData),
         }}
       />
-      <ProductClient product={product} />
+      <Suspense fallback={<ProductSkeleton />}>
+        <ProductClient product={product} />
+      </Suspense>
     </>
   )
 }

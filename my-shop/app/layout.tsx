@@ -4,6 +4,7 @@ import { Inter } from "next/font/google";
 import "./globals.css";
 import { GoogleAnalytics } from "@next/third-parties/google";
 import { Toaster } from "sonner";
+import ErrorBoundary from "@/components/ErrorBoundary";
 
 const inter = Inter({
   variable: "--font-inter",
@@ -115,7 +116,9 @@ export default function RootLayout({
         />
       </head>
       <body className={`${inter.className} antialiased`}>
-        {children}
+        <ErrorBoundary>
+          {children}
+        </ErrorBoundary>
         <Toaster />
         <GoogleAnalytics gaId="GA-XXXXXX-X" />
       </body>

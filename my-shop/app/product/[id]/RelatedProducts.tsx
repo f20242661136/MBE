@@ -6,13 +6,7 @@ import Image from 'next/image'
 import { Star, ArrowRight } from 'lucide-react'
 import { Button } from "@/components/ui/button"
 import { supabase } from '@/lib/supabase'
-
-const formatPKR = (amount: number) =>
-  new Intl.NumberFormat('en-PK', {
-    style: 'currency',
-    currency: 'PKR',
-    maximumFractionDigits: 0
-  }).format(amount)
+import { formatPKR, getImageUrl, handleImageError } from '@/lib/utils'
 
 interface RelatedProduct {
   id: number
@@ -101,15 +95,12 @@ export default function RelatedProducts({ currentProductId, category }: RelatedP
           >
             <div className="relative aspect-square mb-4 overflow-hidden rounded-xl bg-gradient-to-br from-gray-50 to-gray-100">
               <Image
-                src={product.image_urls?.[0] && product.image_urls[0].startsWith('http') ? product.image_urls[0] : '/placeholder-product.svg'}
+                src={getImageUrl(product.image_urls)}
                 alt={product.title}
                 fill
                 className="object-cover group-hover:scale-105 transition-transform duration-300"
                 sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 25vw"
-                onError={(e) => {
-                  const target = e.target as HTMLImageElement;
-                  target.src = '/placeholder-product.svg';
-                }}
+                onError={handleImageError}
               />
 
               {/* Stock Status */}

@@ -14,7 +14,8 @@ import { X, Plus, Trash2 } from 'lucide-react'
 
 const CATEGORIES = [
   'Smartphones', 'Laptops', 'Tablets', 'Headphones', 'Gaming', 'Wearables',
-  'Cameras', 'Accessories', 'Home Appliances', 'TV & Audio', 'Other'
+  'Clothing & Shoes', 'Home & Kitchen', 'Books', 'Sports & Outdoors',
+  'Beauty & Personal Care', 'Toys & Games', 'Furniture', 'Automotive'
 ]
 
 export default function AdminDashboard() {

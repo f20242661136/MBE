@@ -4,34 +4,22 @@ import { useEffect, useState } from 'react'
 import { supabase } from '@/lib/supabase'
 import Link from 'next/link'
 import Image from 'next/image'
-import { 
-  Star, 
-  Truck, 
-  Shield, 
-  CheckCircle, 
+import {
+  Star,
+  Truck,
+  Shield,
+  CheckCircle,
   ArrowRight,
-  Sparkles 
+  Sparkles
 } from 'lucide-react'
 import { Skeleton } from "@/components/ui/skeleton"
 import { Badge } from "@/components/ui/badge"
+import ProductGrid from '@/components/ProductGrid'
+import { Product } from '@/lib/types'
 
-const formatPKR = (amount: number) => 
-  new Intl.NumberFormat('en-PK', { 
-    style: 'currency', 
-    currency: 'PKR', 
-    maximumFractionDigits: 0 
-  }).format(amount)
 
-interface Product {
-  id: number
-  title: string
-  price: number
-  image_urls: string[]
-  category: string
-  rating: number
-  review_count: number
-  is_featured?: boolean
-}
+
+
 
 export default function Home() {
   const [products, setProducts] = useState<Product[]>([])
@@ -44,15 +32,42 @@ export default function Home() {
   async function fetchProducts() {
     try {
       setLoading(true)
-      const { data, error } = await supabase
+      const { data: productsData, error: productsError } = await supabase
         .from('products')
         .select('*')
         .eq('is_active', true)
         .order('id', { ascending: false })
         .limit(12)
-      
-      if (error) throw error
-      setProducts(data || [])
+
+      if (productsError) throw productsError
+
+      // Fetch reviews for each product to calculate dynamic ratings
+      const productsWithReviews = await Promise.all(
+        (productsData || []).map(async (product) => {
+          const { data: reviews, error: reviewsError } = await supabase
+            .from('reviews')
+            .select('rating')
+            .eq('product_id', product.id)
+
+          if (reviewsError) {
+            console.error('Error fetching reviews for product', product.id, reviewsError)
+            return { ...product, rating: product.rating, review_count: product.review_count }
+          }
+
+          const reviewCount = reviews?.length || 0
+          const averageRating = reviewCount > 0
+            ? reviews!.reduce((sum, review) => sum + review.rating, 0) / reviewCount
+            : product.rating
+
+          return {
+            ...product,
+            rating: Math.round(averageRating * 10) / 10, // Round to 1 decimal
+            review_count: reviewCount
+          }
+        })
+      )
+
+      setProducts(productsWithReviews)
     } catch (error) {
       console.error('Error fetching products:', error)
     } finally {
@@ -147,127 +162,20 @@ export default function Home() {
             </p>
           </div>
 
-          {loading ? (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8">
-              {[...Array(8)].map((_, i) => (
-                <div key={i} className="space-y-4">
-                  <Skeleton className="h-64 w-full rounded-2xl" />
-                  <Skeleton className="h-4 w-3/4" />
-                  <Skeleton className="h-4 w-1/2" />
-                </div>
-              ))}
-            </div>
-          ) : (
-            <>
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8">
-                {products.map((product) => (
-                  <Link 
-                    href={`/product/${product.id}`} 
-                    key={product.id}
-                    className="group block"
-                    aria-label={`View ${product.title} details`}
-                  >
-                    <article className="h-full flex flex-col bg-white rounded-2xl overflow-hidden shadow-sm hover:shadow-2xl transition-all duration-500 border border-gray-100 hover:border-emerald-200">
-                      {/* Product Image */}
-                      <div className="relative aspect-square overflow-hidden bg-gradient-to-br from-gray-50 to-gray-100">
-                        <Image
-                          src={product.image_urls && product.image_urls.length > 0 && product.image_urls[0].startsWith('http') ? product.image_urls[0] : '/placeholder-product.svg'}
-                          alt={product.title}
-                          fill
-                          sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
-                          className="object-cover group-hover:scale-105 transition-transform duration-500"
-                          priority={product.is_featured}
-                          onError={(e) => {
-                            const target = e.target as HTMLImageElement;
-                            target.src = '/placeholder-product.jpg';
-                          }}
-                        />
-                        
-                        {/* Badges */}
-                        <div className="absolute top-4 left-4">
-                          <Badge className="bg-gradient-to-r from-emerald-500 to-green-600 hover:from-emerald-600 hover:to-green-700 border-0 shadow-lg">
-                            Free Delivery
-                          </Badge>
-                        </div>
-                        
-                        {product.is_featured && (
-                          <div className="absolute top-4 right-4">
-                            <Badge className="bg-gradient-to-r from-amber-500 to-orange-600 hover:from-amber-600 hover:to-orange-700 border-0 shadow-lg">
-                              Featured
-                            </Badge>
-                          </div>
-                        )}
-                      </div>
+          <ProductGrid products={products} loading={loading} />
 
-                      {/* Product Content */}
-                      <div className="flex-1 p-6 flex flex-col">
-                        <div className="mb-2">
-                          <span className="text-sm font-medium text-emerald-600 bg-emerald-50 px-3 py-1 rounded-full">
-                            {product.category}
-                          </span>
-                        </div>
-                        
-                        <h3 className="font-semibold text-gray-900 text-lg mb-2 line-clamp-2 group-hover:text-emerald-700 transition-colors">
-                          {product.title}
-                        </h3>
-                        
-                        {/* Rating */}
-                        <div className="flex items-center mb-4">
-                          <div className="flex">
-                            {[...Array(5)].map((_, i) => (
-                              <Star
-                                key={i}
-                                className={`w-4 h-4 ${
-                                  i < Math.floor(product.rating)
-                                    ? "text-amber-500 fill-amber-500"
-                                    : "text-gray-300"
-                                }`}
-                              />
-                            ))}
-                          </div>
-                          <span className="ml-2 text-sm text-gray-600">
-                            ({product.review_count})
-                          </span>
-                        </div>
-                        
-                        {/* Price */}
-                        <div className="mt-auto">
-                          <div className="flex items-baseline justify-between">
-                            <div>
-                              <p className="text-2xl font-bold text-gray-900">
-                                {formatPKR(product.price)}
-                              </p>
-                              {product.price < 10000 && (
-                                <p className="text-sm text-gray-500 line-through">
-                                  {formatPKR(product.price * 1.3)}
-                                </p>
-                              )}
-                            </div>
-                            <div className="px-4 py-2 bg-gradient-to-r from-gray-900 to-black text-white rounded-full text-sm font-semibold group-hover:from-emerald-600 group-hover:to-green-700 transition-all duration-300 transform group-hover:scale-105">
-                              View Details
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    </article>
-                  </Link>
-                ))}
+          {products.length === 0 && !loading && (
+            <div className="text-center py-12">
+              <div className="mx-auto w-24 h-24 mb-4 text-gray-300">
+                <Sparkles className="w-full h-full" />
               </div>
-
-              {products.length === 0 && (
-                <div className="text-center py-12">
-                  <div className="mx-auto w-24 h-24 mb-4 text-gray-300">
-                    <Sparkles className="w-full h-full" />
-                  </div>
-                  <h3 className="text-xl font-semibold text-gray-700 mb-2">
-                    No products available
-                  </h3>
-                  <p className="text-gray-500">
-                    Check back soon for new arrivals!
-                  </p>
-                </div>
-              )}
-            </>
+              <h3 className="text-xl font-semibold text-gray-700 mb-2">
+                No products available
+              </h3>
+              <p className="text-gray-500">
+                Check back soon for new arrivals!
+              </p>
+            </div>
           )}
         </div>
       </section>
