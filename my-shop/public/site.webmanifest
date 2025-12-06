@@ -1,0 +1,16 @@
+{
+  "name": "E-Shop Pakistan",
+  "short_name": "E-Shop PK",
+  "description": "Your trusted online shopping destination in Pakistan",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#000000",
+  "icons": [
+    {
+      "src": "/favicon-16x16.png",
+      "sizes": "16x16",
+      "type": "image/png"
+    }
+  ]
+}

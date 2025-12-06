@@ -1,197 +1,162 @@
-'use client'
-
-import { useEffect, useState, FormEvent } from 'react'
+// app/product/[id]/page.tsx
+import { Metadata } from 'next'
+import { notFound } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
-import { useRouter, useParams } from 'next/navigation'
-import { Phone, CheckCircle } from 'lucide-react'
+import ProductClient from './ProductClient'
 
-// Define interfaces
+const formatPKR = (amount: number) => 
+  new Intl.NumberFormat('en-PK', { 
+    style: 'currency', 
+    currency: 'PKR', 
+    maximumFractionDigits: 0 
+  }).format(amount)
+
 interface Product {
   id: number
   title: string
   price: number
   image_url: string
   description: string
+  category: string
+  rating: number
+  review_count: number
+  specifications: Record<string, string>
+  stock_quantity: number
 }
 
-interface FormData {
-  name: string
-  phone: string
-  city: string
-  address: string
-}
+export async function generateMetadata({ params }: { params: { id: string } }): Promise<Metadata> {
+  const resolvedParams = await params;
+  const { data: product } = await supabase
+    .from('products')
+    .select('*')
+    .eq('id', resolvedParams.id)
+    .single()
 
-export default function ProductPage() {
-  const params = useParams()                     // ✅ FIX
-  const productId = params?.id as string         // ✅ FIX
-
-  const [product, setProduct] = useState<Product | null>(null)
-  const [loading, setLoading] = useState(false)
-  const [submitted, setSubmitted] = useState(false)
-  const router = useRouter()
-
-  const [formData, setFormData] = useState<FormData>({
-    name: '',
-    phone: '',
-    city: 'Lahore',
-    address: ''
-  })
-
-  const cities = ['Lahore', 'Karachi', 'Islamabad', 'Rawalpindi', 'Faisalabad', 'Multan', 'Peshawar', 'Quetta']
-
-  useEffect(() => {
-    async function getProduct() {
-      if (!productId) return
-
-      const { data } = await supabase
-        .from('products')
-        .select('*')
-        .eq('id', productId)
-        .single()
-
-      if (data) setProduct(data as Product)
+  if (!product) {
+    return {
+      title: 'Product Not Found',
+      description: 'The requested product could not be found.',
     }
-
-    getProduct()
-  }, [productId])
-
-  async function handleSubmit(e: FormEvent) {
-    e.preventDefault()
-    setLoading(true)
-
-    if (!product) return
-
-    if (!formData.phone.startsWith('03') || formData.phone.length !== 11) {
-      alert('Please enter a valid Pakistani phone number (03XXXXXXXXX)')
-      setLoading(false)
-      return
-    }
-
-    const { error } = await supabase.from('orders').insert([
-      {
-        customer_name: formData.name,
-        phone: formData.phone,
-        city: formData.city,
-        address: formData.address,
-        product_title: product.title,
-        product_price: product.price
-      }
-    ])
-
-    if (!error) {
-      setSubmitted(true)
-    } else {
-      alert('Error placing order. Please try again.')
-    }
-
-    setLoading(false)
   }
 
-  if (!product) return <div className="p-10 text-center">Loading...</div>
+  return {
+    title: `${product.title} | ${formatPKR(product.price)} | E-Shop Pakistan`,
+    description: product.description || `Buy ${product.title} online in Pakistan. Price: ${formatPKR(product.price)}. Cash on delivery, free shipping, 7-day warranty.`,
+    keywords: [
+      product.title,
+      'buy online Pakistan',
+      'cash on delivery',
+      product.category,
+      ...(product.title.toLowerCase().split(' ') || [])
+    ],
+    openGraph: {
+      title: `${product.title} | E-Shop Pakistan`,
+      description: product.description || `Best price for ${product.title} in Pakistan`,
+      images: [product.image_url],
+    },
+    twitter: {
+      card: 'summary_large_image',
+      title: `${product.title} | E-Shop Pakistan`,
+      description: product.description || `Get ${product.title} at best price in Pakistan`,
+      images: [product.image_url],
+    },
+    alternates: {
+      canonical: `/product/${product.id}`,
+    },
+  }
+}
 
-  if (submitted) {
-    return (
-      <div className="min-h-screen flex flex-col items-center justify-center bg-green-50 p-4">
-        <CheckCircle size={64} className="text-green-600 mb-4" />
-        <h1 className="text-2xl font-bold text-green-800">Order Placed Successfully!</h1>
-        <p className="text-gray-600 mt-2 text-center">
-          We will call you on <b>{formData.phone}</b> shortly to confirm.
-        </p>
-        <button onClick={() => router.push('/')} className="mt-8 text-blue-600 underline">
-          Back to Home
-        </button>
-      </div>
-    )
+export async function generateStaticParams() {
+  const { data: products } = await supabase
+    .from('products')
+    .select('id')
+    .eq('is_active', true)
+
+  return products?.map((product) => ({
+    id: product.id.toString(),
+  })) || []
+}
+
+async function getProduct(id: string): Promise<Product | null> {
+  const { data: product } = await supabase
+    .from('products')
+    .select('*')
+    .eq('id', id)
+    .eq('is_active', true)
+    .single()
+
+  return product
+}
+
+export default async function ProductPage({ params }: { params: { id: string } }) {
+  const resolvedParams = await params;
+  const product = await getProduct(resolvedParams.id)
+
+  if (!product) {
+    notFound()
+  }
+
+  // Generate structured data for product
+  const productStructuredData = {
+    '@context': 'https://schema.org/',
+    '@type': 'Product',
+    name: product.title,
+    image: product.image_url,
+    description: product.description,
+    sku: `PROD-${product.id}`,
+    brand: {
+      '@type': 'Brand',
+      name: 'E-Shop Pakistan',
+    },
+    offers: {
+      '@type': 'Offer',
+      url: `https://eshop-pk.com/product/${product.id}`,
+      priceCurrency: 'PKR',
+      price: product.price,
+      priceValidUntil: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+      availability: product.stock_quantity > 0 
+        ? 'https://schema.org/InStock'
+        : 'https://schema.org/OutOfStock',
+      shippingDetails: {
+        '@type': 'OfferShippingDetails',
+        shippingRate: {
+          '@type': 'MonetaryAmount',
+          value: 0,
+          currency: 'PKR',
+        },
+        shippingDestination: {
+          '@type': 'DefinedRegion',
+          addressCountry: 'PK',
+        },
+        deliveryTime: {
+          '@type': 'ShippingDeliveryTime',
+          handlingTime: {
+            minValue: 1,
+            maxValue: 2,
+          },
+          transitTime: {
+            minValue: 3,
+            maxValue: 7,
+          },
+        },
+      },
+    },
+    aggregateRating: {
+      '@type': 'AggregateRating',
+      ratingValue: product.rating,
+      reviewCount: product.review_count,
+    },
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 p-4 flex justify-center items-center">
-      <div className="bg-white max-w-4xl w-full rounded-xl shadow-lg overflow-hidden flex flex-col md:flex-row">
-
-        {/* Left: Product Information */}
-        <div className="md:w-1/2 p-6 border-r border-gray-100">
-          <img
-            src={product.image_url}
-            alt={product.title}
-            className="w-full h-64 object-cover rounded-lg mb-4"
-          />
-          <h1 className="text-2xl font-bold text-gray-900">{product.title}</h1>
-          <p className="text-3xl font-bold text-green-600 mt-2">Rs. {product.price}</p>
-          <p className="text-gray-500 mt-4">{product.description}</p>
-
-          <div className="mt-6 flex items-center text-sm text-gray-500 bg-gray-100 p-2 rounded">
-            <CheckCircle size={16} className="mr-2" /> Cash on Delivery Available
-          </div>
-        </div>
-
-        {/* Right: Order Form */}
-        <div className="md:w-1/2 p-8 bg-gray-50">
-          <h2 className="text-xl font-bold mb-6 text-gray-800">Shipping Details</h2>
-
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700">Full Name</label>
-              <input
-                required
-                type="text"
-                className="w-full mt-1 p-2 border rounded-md  text-black"
-                placeholder="Ali Khan"
-                value={formData.name}
-                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700">Phone Number (03...)</label>
-              <input
-                required
-                type="number"
-                className="w-full mt-1 p-2 border rounded-md  text-black"
-                placeholder="03001234567"
-                value={formData.phone}
-                onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700">City</label>
-              <select
-                className="w-full mt-1 p-2 border rounded-md bg-white"
-                value={formData.city}
-                onChange={(e) => setFormData({ ...formData, city: e.target.value })}
-              >
-                {cities.map((city) => (
-                  <option key={city} value={city}>
-                    {city}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700">Full Address</label>
-              <textarea
-                required
-                className="w-full mt-1 p-2 border rounded-md  text-black"
-                placeholder="House #, Street, Area..."
-                
-                rows={3}
-                value={formData.address}
-                onChange={(e) => setFormData({ ...formData, address: e.target.value })}
-              ></textarea>
-            </div>
-
-            <button
-              disabled={loading}
-              type="submit"
-              className="w-full bg-black text-white py-3 rounded-md font-bold text-lg hover:bg-gray-800 transition flex justify-center items-center"
-            >
-              {loading ? 'Processing...' : 'Confirm Order (COD)'}
-            </button>
-          </form>
-        </div>
-      
-      </div>
-    </div>
+    <>
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{
+          __html: JSON.stringify(productStructuredData),
+        }}
+      />
+      <ProductClient product={product} />
+    </>
   )
 }
