@@ -10,12 +10,21 @@ import { useToast } from "@/hooks/use-toast"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { X, Plus, Trash2 } from 'lucide-react'
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
+import { X, Plus, Trash2, Edit, Download, Search, Filter } from 'lucide-react'
 
 const CATEGORIES = [
   'Smartphones', 'Laptops', 'Tablets', 'Headphones', 'Gaming', 'Wearables',
   'Clothing & Shoes', 'Home & Kitchen', 'Books', 'Sports & Outdoors',
   'Beauty & Personal Care', 'Toys & Games', 'Furniture', 'Automotive'
+]
+
+// Admin email whitelist - only these users can access admin dashboard
+const ADMIN_EMAILS = [
+  'admin@eshoppakistan.com',
+  'rashidali@example.com', // Add your admin emails here
+  'f20242661136@gmail.com', // Your admin email
+  // Add more admin emails as needed
 ]
 
 export default function AdminDashboard() {
@@ -38,6 +47,12 @@ export default function AdminDashboard() {
   const [selectedImages, setSelectedImages] = useState<File[]>([])
   const [imagePreviews, setImagePreviews] = useState<string[]>([])
 
+  // New state for enhancements
+  const [orderSearch, setOrderSearch] = useState('')
+  const [orderStatusFilter, setOrderStatusFilter] = useState('All')
+  const [editingProduct, setEditingProduct] = useState<any>(null)
+  const [editDialogOpen, setEditDialogOpen] = useState(false)
+
   useEffect(() => {
     checkAuth()
     fetchOrders()
@@ -48,9 +63,23 @@ export default function AdminDashboard() {
     const { data: { session } } = await supabase.auth.getSession()
     if (!session) {
       router.push('/login')
-    } else {
-      setSession(session)
+      return
     }
+
+    // Check if user is admin
+    const userEmail = session.user?.email
+    if (!userEmail || !ADMIN_EMAILS.includes(userEmail)) {
+      toast({
+        title: "Access Denied",
+        description: "You don't have permission to access the admin dashboard.",
+        variant: "destructive",
+      })
+      await supabase.auth.signOut()
+      router.push('/')
+      return
+    }
+
+    setSession(session)
   }
 
   async function fetchOrders() {
@@ -254,6 +283,162 @@ export default function AdminDashboard() {
     }
   }
 
+  // Update order status
+  async function updateOrderStatus(orderId: number, newStatus: string) {
+    try {
+      const { error } = await supabase
+        .from('orders')
+        .update({ status: newStatus })
+        .eq('id', orderId)
+
+      if (error) throw error
+
+      toast({
+        title: "Order Updated",
+        description: `Order status changed to ${newStatus}.`,
+      })
+
+      fetchOrders()
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to update order status.",
+        variant: "destructive",
+      })
+    }
+  }
+
+  // Edit product
+  async function handleEditProduct(e: React.FormEvent) {
+    e.preventDefault()
+    if (!editingProduct) return
+
+    setLoading(true)
+
+    try {
+      let imageUrls = editingProduct.image_urls || []
+
+      // Upload new images if any
+      if (selectedImages.length > 0) {
+        const newImageUrls = await uploadImages()
+        imageUrls = [...imageUrls, ...newImageUrls]
+      }
+
+      // Parse specifications
+      let specs = {}
+      try {
+        specs = JSON.parse(editingProduct.specifications || '{}')
+      } catch {
+        specs = {}
+      }
+
+      const { error } = await supabase.from('products').update({
+        title: editingProduct.title,
+        price: parseFloat(editingProduct.price),
+        image_urls: imageUrls,
+        description: editingProduct.description,
+        category: editingProduct.category,
+        stock_quantity: parseInt(editingProduct.stock_quantity) || 10,
+        specifications: specs,
+      }).eq('id', editingProduct.id)
+
+      if (error) throw error
+
+      toast({
+        title: "Product Updated!",
+        description: "Product has been successfully updated.",
+      })
+
+      setEditDialogOpen(false)
+      setEditingProduct(null)
+      setSelectedImages([])
+      setImagePreviews([])
+
+      fetchProducts()
+
+    } catch (error) {
+      console.error('Error updating product:', error)
+      toast({
+        title: "Error",
+        description: "Failed to update product. Please try again.",
+        variant: "destructive",
+      })
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  // Export orders to CSV
+  function exportOrdersToCSV() {
+    const headers = ['Date', 'Customer Name', 'Phone', 'Product', 'Price', 'Status', 'Address', 'City']
+    const csvContent = [
+      headers.join(','),
+      ...orders.map(order => [
+        new Date(order.created_at).toLocaleDateString(),
+        `"${order.customer_name}"`,
+        `"${order.phone}"`,
+        `"${order.product_title}"`,
+        order.product_price,
+        order.status,
+        `"${order.address}"`,
+        `"${order.city}"`
+      ].join(','))
+    ].join('\n')
+
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' })
+    const link = document.createElement('a')
+    const url = URL.createObjectURL(blob)
+    link.setAttribute('href', url)
+    link.setAttribute('download', `orders_${new Date().toISOString().split('T')[0]}.csv`)
+    link.style.visibility = 'hidden'
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+
+    toast({
+      title: "Export Complete",
+      description: "Orders exported to CSV successfully.",
+    })
+  }
+
+  // Export products to CSV
+  function exportProductsToCSV() {
+    const headers = ['Title', 'Price', 'Category', 'Stock', 'Status', 'Rating', 'Reviews']
+    const csvContent = [
+      headers.join(','),
+      ...products.map(product => [
+        `"${product.title}"`,
+        product.price,
+        `"${product.category}"`,
+        product.stock_quantity,
+        product.is_active ? 'Active' : 'Inactive',
+        product.rating,
+        product.review_count
+      ].join(','))
+    ].join('\n')
+
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' })
+    const link = document.createElement('a')
+    const url = URL.createObjectURL(blob)
+    link.setAttribute('href', url)
+    link.setAttribute('download', `products_${new Date().toISOString().split('T')[0]}.csv`)
+    link.style.visibility = 'hidden'
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+
+    toast({
+      title: "Export Complete",
+      description: "Products exported to CSV successfully.",
+    })
+  }
+
+  // Open edit dialog
+  function openEditDialog(product: any) {
+    setEditingProduct({ ...product })
+    setEditDialogOpen(true)
+  }
+
   return (
     <div className="min-h-screen bg-gray-50 p-4 md:p-8">
       <div className="max-w-7xl mx-auto">
@@ -277,10 +462,48 @@ export default function AdminDashboard() {
           <TabsContent value="orders">
             <Card>
               <CardHeader>
-                <CardTitle>Order Management</CardTitle>
-                <CardDescription>View and manage customer orders</CardDescription>
+                <div className="flex justify-between items-center">
+                  <div>
+                    <CardTitle>Order Management</CardTitle>
+                    <CardDescription>View and manage customer orders</CardDescription>
+                  </div>
+                  <div className="flex gap-2">
+                    <Button onClick={exportOrdersToCSV} variant="outline" size="sm">
+                      <Download className="w-4 h-4 mr-2" />
+                      Export CSV
+                    </Button>
+                  </div>
+                </div>
               </CardHeader>
               <CardContent>
+                {/* Search and Filter */}
+                <div className="flex gap-4 mb-6">
+                  <div className="flex-1">
+                    <div className="relative">
+                      <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+                      <Input
+                        placeholder="Search orders by customer name, phone, or product..."
+                        value={orderSearch}
+                        onChange={(e) => setOrderSearch(e.target.value)}
+                        className="pl-10"
+                      />
+                    </div>
+                  </div>
+                  <Select value={orderStatusFilter} onValueChange={setOrderStatusFilter}>
+                    <SelectTrigger className="w-48">
+                      <Filter className="w-4 h-4 mr-2" />
+                      <SelectValue placeholder="Filter by status" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="All">All Statuses</SelectItem>
+                      <SelectItem value="Pending">Pending</SelectItem>
+                      <SelectItem value="Processing">Processing</SelectItem>
+                      <SelectItem value="Shipped">Shipped</SelectItem>
+                      <SelectItem value="Delivered">Delivered</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
                 <div className="overflow-x-auto">
                   <table className="min-w-full divide-y divide-gray-200">
                     <thead className="bg-gray-50">
@@ -289,11 +512,20 @@ export default function AdminDashboard() {
                         <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Customer</th>
                         <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Product</th>
                         <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-                        <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Action</th>
+                        <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
                       </tr>
                     </thead>
                     <tbody className="bg-white divide-y divide-gray-200">
-                      {orders.map((order) => (
+                      {orders
+                        .filter(order => {
+                          const matchesSearch = orderSearch === '' ||
+                            order.customer_name.toLowerCase().includes(orderSearch.toLowerCase()) ||
+                            order.phone.includes(orderSearch) ||
+                            order.product_title.toLowerCase().includes(orderSearch.toLowerCase())
+                          const matchesFilter = orderStatusFilter === 'All' || order.status === orderStatusFilter
+                          return matchesSearch && matchesFilter
+                        })
+                        .map((order) => (
                         <tr key={order.id}>
                           <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                             {new Date(order.created_at).toLocaleDateString()}
@@ -307,9 +539,22 @@ export default function AdminDashboard() {
                             <div className="text-sm font-bold text-green-600">Rs. {order.product_price}</div>
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap">
-                            <Badge variant={order.status === 'Pending' ? 'secondary' : 'default'}>
-                              {order.status}
-                            </Badge>
+                            <Select
+                              value={order.status}
+                              onValueChange={(value) => updateOrderStatus(order.id, value)}
+                            >
+                              <SelectTrigger className="w-32">
+                                <Badge variant={order.status === 'Pending' ? 'secondary' : 'default'}>
+                                  {order.status}
+                                </Badge>
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="Pending">Pending</SelectItem>
+                                <SelectItem value="Processing">Processing</SelectItem>
+                                <SelectItem value="Shipped">Shipped</SelectItem>
+                                <SelectItem value="Delivered">Delivered</SelectItem>
+                              </SelectContent>
+                            </Select>
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                             <Button
@@ -474,8 +719,18 @@ export default function AdminDashboard() {
             {/* Products List */}
             <Card>
               <CardHeader>
-                <CardTitle>Product Management</CardTitle>
-                <CardDescription>View and manage your products</CardDescription>
+                <div className="flex justify-between items-center">
+                  <div>
+                    <CardTitle>Product Management</CardTitle>
+                    <CardDescription>View and manage your products</CardDescription>
+                  </div>
+                  <div className="flex gap-2">
+                    <Button onClick={exportProductsToCSV} variant="outline" size="sm">
+                      <Download className="w-4 h-4 mr-2" />
+                      Export CSV
+                    </Button>
+                  </div>
+                </div>
               </CardHeader>
               <CardContent>
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -504,6 +759,14 @@ export default function AdminDashboard() {
                           <Button
                             variant="outline"
                             size="sm"
+                            onClick={() => openEditDialog(product)}
+                          >
+                            <Edit className="w-4 h-4 mr-1" />
+                            Edit Product
+                          </Button>
+                          <Button
+                            variant="outline"
+                            size="sm"
                             onClick={() => toggleProductStatus(product.id, product.is_active)}
                           >
                             {product.is_active ? 'Deactivate' : 'Activate'}
@@ -522,6 +785,173 @@ export default function AdminDashboard() {
                 </div>
               </CardContent>
             </Card>
+
+            {/* Edit Product Dialog */}
+            <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
+              <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+                <DialogHeader>
+                  <DialogTitle>Edit Product</DialogTitle>
+                  <DialogDescription>Update product details and images</DialogDescription>
+                </DialogHeader>
+                {editingProduct && (
+                  <form onSubmit={handleEditProduct} className="space-y-6">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                      <div className="space-y-4">
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-2">
+                            Product Title *
+                          </label>
+                          <Input
+                            required
+                            placeholder="Enter product title"
+                            value={editingProduct.title || ''}
+                            onChange={(e) => setEditingProduct({...editingProduct, title: e.target.value})}
+                          />
+                        </div>
+
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-2">
+                            Price (PKR) *
+                          </label>
+                          <Input
+                            required
+                            type="number"
+                            placeholder="0"
+                            value={editingProduct.price || ''}
+                            onChange={(e) => setEditingProduct({...editingProduct, price: e.target.value})}
+                          />
+                        </div>
+
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-2">
+                            Category *
+                          </label>
+                          <Select value={editingProduct.category || ''} onValueChange={(value) => setEditingProduct({...editingProduct, category: value})}>
+                            <SelectTrigger>
+                              <SelectValue placeholder="Select category" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {CATEGORIES.map((cat) => (
+                                <SelectItem key={cat} value={cat}>{cat}</SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-2">
+                            Stock Quantity
+                          </label>
+                          <Input
+                            type="number"
+                            placeholder="10"
+                            value={editingProduct.stock_quantity || ''}
+                            onChange={(e) => setEditingProduct({...editingProduct, stock_quantity: e.target.value})}
+                          />
+                        </div>
+                      </div>
+
+                      <div className="space-y-4">
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-2">
+                            Description
+                          </label>
+                          <Textarea
+                            placeholder="Product description..."
+                            value={editingProduct.description || ''}
+                            onChange={(e) => setEditingProduct({...editingProduct, description: e.target.value})}
+                            rows={4}
+                          />
+                        </div>
+
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-2">
+                            Specifications (JSON)
+                          </label>
+                          <Textarea
+                            placeholder='{"Storage": "256GB", "Color": "Black"}'
+                            value={editingProduct.specifications ? JSON.stringify(editingProduct.specifications, null, 2) : ''}
+                            onChange={(e) => setEditingProduct({...editingProduct, specifications: e.target.value})}
+                            rows={3}
+                          />
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Existing Images */}
+                    {editingProduct.image_urls && editingProduct.image_urls.length > 0 && (
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          Current Images
+                        </label>
+                        <div className="flex flex-wrap gap-4 mb-4">
+                          {editingProduct.image_urls.map((url: string, index: number) => (
+                            <div key={index} className="relative">
+                              <img
+                                src={url}
+                                alt={`Current ${index + 1}`}
+                                className="w-20 h-20 object-cover rounded-lg border"
+                              />
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Add New Images */}
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Add New Images (Optional)
+                      </label>
+                      <div className="flex flex-wrap gap-4 mb-4">
+                        {imagePreviews.map((preview, index) => (
+                          <div key={index} className="relative">
+                            <img
+                              src={preview}
+                              alt={`New Preview ${index + 1}`}
+                              className="w-20 h-20 object-cover rounded-lg border"
+                            />
+                            <Button
+                              type="button"
+                              variant="destructive"
+                              size="sm"
+                              className="absolute -top-2 -right-2 w-6 h-6 p-0"
+                              onClick={() => removeImage(index)}
+                            >
+                              <X className="w-3 h-3" />
+                            </Button>
+                          </div>
+                        ))}
+                        {selectedImages.length < 5 && (
+                          <label className="w-20 h-20 border-2 border-dashed border-gray-300 rounded-lg flex items-center justify-center cursor-pointer hover:border-gray-400 transition-colors">
+                            <input
+                              type="file"
+                              multiple
+                              accept="image/*"
+                              onChange={handleImageSelect}
+                              className="hidden"
+                            />
+                            <Plus className="w-6 h-6 text-gray-400" />
+                          </label>
+                        )}
+                      </div>
+                      <p className="text-sm text-gray-500">
+                        {selectedImages.length}/5 new images selected
+                      </p>
+                    </div>
+
+                    <div className="flex justify-end gap-4">
+                      <Button type="button" variant="outline" onClick={() => setEditDialogOpen(false)}>
+                        Cancel
+                      </Button>
+                      <Button type="submit" disabled={loading}>
+                        {loading ? 'Updating...' : 'Update Product'}
+                      </Button>
+                    </div>
+                  </form>
+                )}
+              </DialogContent>
+            </Dialog>
           </TabsContent>
         </Tabs>
       </div>

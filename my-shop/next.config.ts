@@ -25,7 +25,15 @@ const nextConfig: NextConfig = {
       },
     ],
     unoptimized: true,
+    formats: ['image/webp', 'image/avif'],
   },
+  experimental: {
+    optimizeCss: true,
+    optimizePackageImports: ['lucide-react', '@radix-ui/react-select', '@radix-ui/react-dialog'],
+  },
+  compress: true,
+  poweredByHeader: false,
+  reactStrictMode: true,
 };
 
 export default nextConfig;

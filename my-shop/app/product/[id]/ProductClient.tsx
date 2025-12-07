@@ -34,11 +34,11 @@ interface ProductClientProps {
     title: string
     price: number
     image_urls: string[]
-    description: string
+    description?: string
     category: string
     rating: number
     review_count: number
-    specifications: Record<string, any>
+    specifications?: Record<string, any>
     stock_quantity: number
   }
 }
@@ -182,21 +182,33 @@ export default function ProductClient({ product }: ProductClientProps) {
       {/* Breadcrumb */}
       <nav className="bg-white border-b border-gray-100" aria-label="Breadcrumb">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
-          <div className="flex items-center text-sm text-gray-600">
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => router.back()}
-              className="mr-2"
-            >
-              <ArrowLeft className="w-4 h-4 mr-1" />
-              Back
-            </Button>
-            <span className="mx-2">/</span>
-            <span className="text-gray-900 font-medium">{product.category}</span>
-            <span className="mx-2">/</span>
-            <span className="text-emerald-600 font-semibold truncate">{product.title}</span>
-          </div>
+          <ol className="flex items-center text-sm text-gray-600">
+            <li>
+              <button
+                onClick={() => router.push('/')}
+                className="hover:text-emerald-600 transition-colors"
+                aria-label="Go to home page"
+              >
+                Home
+              </button>
+            </li>
+            <li className="flex items-center">
+              <span className="mx-2 text-gray-400">/</span>
+              <button
+                onClick={() => router.push(`/categories/${product.category.toLowerCase()}`)}
+                className="hover:text-emerald-600 transition-colors capitalize"
+                aria-label={`Go to ${product.category} category`}
+              >
+                {product.category}
+              </button>
+            </li>
+            <li className="flex items-center">
+              <span className="mx-2 text-gray-400">/</span>
+              <span className="text-emerald-600 font-semibold truncate" aria-current="page">
+                {product.title}
+              </span>
+            </li>
+          </ol>
         </div>
       </nav>
 
@@ -212,7 +224,7 @@ export default function ProductClient({ product }: ProductClientProps) {
                 alt={product.title}
                 fill
                 unoptimized
-                className="object-cover"
+                className="object-cover optimized-image"
                 priority
                 loading="eager"
                 sizes="(max-width: 768px) 100vw, 50vw"
@@ -300,7 +312,8 @@ export default function ProductClient({ product }: ProductClientProps) {
                       src={img}
                       alt={`${product.title} view ${index + 1} of ${productImages.length}`}
                       fill
-                      className="object-cover"
+                      className="object-cover optimized-image"
+                      loading="lazy"
                     />
                   </button>
                 ))}

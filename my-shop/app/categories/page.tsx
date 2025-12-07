@@ -5,6 +5,9 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button"
 import { ArrowRight, Smartphone, Laptop, Tablet, Headphones, Gamepad2, Watch, Camera, Zap, Home, Tv, MoreHorizontal } from 'lucide-react'
 
+// Force dynamic rendering to avoid build-time Supabase calls
+export const dynamic = 'force-dynamic'
+
 const CATEGORIES = [
   {
     name: 'Smartphones',

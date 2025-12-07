@@ -1,16 +1,9 @@
 // app/layout.tsx
 import type { Metadata } from "next";
-import { Inter } from "next/font/google";
 import "./globals.css";
 import { GoogleAnalytics } from "@next/third-parties/google";
 import { Toaster } from "sonner";
 import ErrorBoundary from "@/components/ErrorBoundary";
-
-const inter = Inter({
-  variable: "--font-inter",
-  subsets: ["latin"],
-  display: "swap",
-});
 
 
 
@@ -80,7 +73,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className={`${inter.variable}`}>
+    <html lang="en">
       <head>
         <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=5" />
         <meta name="theme-color" content="#000000" />
@@ -115,7 +108,7 @@ export default function RootLayout({
           }}
         />
       </head>
-      <body className={`${inter.className} antialiased`}>
+      <body className="font-sans antialiased">
         <ErrorBoundary>
           {children}
         </ErrorBoundary>

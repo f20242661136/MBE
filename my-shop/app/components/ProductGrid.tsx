@@ -31,8 +31,8 @@ interface ProductGridProps {
 
 export default function ProductGrid({ products, loading = false }: ProductGridProps) {
   if (loading) {
-    return (
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8">
+  return (
+    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8 mobile-grid">
         {[...Array(8)].map((_, i) => (
           <div key={i} className="space-y-4">
             <Skeleton className="aspect-square w-full rounded-2xl" />
@@ -45,7 +45,7 @@ export default function ProductGrid({ products, loading = false }: ProductGridPr
   }
 
   return (
-    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8">
+    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8 mobile-grid">
       {products.map((product) => (
         <Link
           href={`/product/${product.id}`}

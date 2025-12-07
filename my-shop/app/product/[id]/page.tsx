@@ -2,9 +2,11 @@
 import { Metadata } from 'next'
 import { notFound } from 'next/navigation'
 import { Suspense } from 'react'
+import Script from 'next/script'
 import { supabase } from '@/lib/supabase'
 import ProductClient from './ProductClient'
 import ProductSkeleton from '@/components/ProductSkeleton'
+import { Product } from '@/lib/types'
 
 const formatPKR = (amount: number) => 
   new Intl.NumberFormat('en-PK', { 
@@ -13,18 +15,7 @@ const formatPKR = (amount: number) =>
     maximumFractionDigits: 0 
   }).format(amount)
 
-interface Product {
-  id: number
-  title: string
-  price: number
-  image_urls: string[]
-  description: string
-  category: string
-  rating: number
-  review_count: number
-  specifications: Record<string, any>
-  stock_quantity: number
-}
+
 
 export async function generateMetadata({ params }: { params: { id: string } }): Promise<Metadata> {
   const resolvedParams = await params;
@@ -63,7 +54,7 @@ export async function generateMetadata({ params }: { params: { id: string } }): 
       images: product.image_urls && product.image_urls.length > 0 ? [product.image_urls[0]] : [],
     },
     alternates: {
-      canonical: `/product/${product.id}`,
+      canonical: `https://molvibusiness.shop/product/${product.id}`,
     },
   }
 }
@@ -87,7 +78,7 @@ async function getProduct(id: string): Promise<Product | null> {
     .eq('is_active', true)
     .single()
 
-  return product
+  return product as Product | null
 }
 
 export default async function ProductPage({ params }: { params: { id: string } }) {
@@ -98,65 +89,37 @@ export default async function ProductPage({ params }: { params: { id: string } }
     notFound()
   }
 
-  // Generate structured data for product
-  const productStructuredData = {
-    '@context': 'https://schema.org/',
-    '@type': 'Product',
+  const schema = {
+    "@context": "https://schema.org/",
+    "@type": "Product",
     name: product.title,
-    image: product.image_urls && product.image_urls.length > 0 ? product.image_urls[0] : '',
-    description: product.description,
-    sku: `PROD-${product.id}`,
+    image: product.image_urls, // array is OK
+    description: product.description ?? `${product.title} available in Pakistan.`,
+    sku: String(product.id),
+    category: product.category,
     brand: {
-      '@type': 'Brand',
-      name: 'E-Shop Pakistan',
+      "@type": "Brand",
+      name: "Molvi Business",
     },
     offers: {
-      '@type': 'Offer',
-      url: `https://eshop-pk.com/product/${product.id}`,
-      priceCurrency: 'PKR',
+      "@type": "Offer",
+      url: `https://molvibusiness.shop/product/${product.id}`,
+      priceCurrency: "PKR",
       price: product.price,
-      priceValidUntil: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0] as string,
-      availability: product.stock_quantity > 0 
-        ? 'https://schema.org/InStock'
-        : 'https://schema.org/OutOfStock',
-      shippingDetails: {
-        '@type': 'OfferShippingDetails',
-        shippingRate: {
-          '@type': 'MonetaryAmount',
-          value: 0,
-          currency: 'PKR',
-        },
-        shippingDestination: {
-          '@type': 'DefinedRegion',
-          addressCountry: 'PK',
-        },
-        deliveryTime: {
-          '@type': 'ShippingDeliveryTime',
-          handlingTime: {
-            minValue: 1,
-            maxValue: 2,
-          },
-          transitTime: {
-            minValue: 3,
-            maxValue: 7,
-          },
-        },
-      },
+      availability:
+        product.stock_quantity > 0
+          ? "https://schema.org/InStock"
+          : "https://schema.org/OutOfStock",
+      itemCondition: "https://schema.org/NewCondition",
     },
-    aggregateRating: {
-      '@type': 'AggregateRating',
-      ratingValue: product.rating,
-      reviewCount: product.review_count,
-    },
-  }
+  };
 
   return (
     <>
-      <script
+      <Script
+        id="product-schema"
         type="application/ld+json"
-        dangerouslySetInnerHTML={{
-          __html: JSON.stringify(productStructuredData),
-        }}
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(schema) }}
       />
       <Suspense fallback={<ProductSkeleton />}>
         <ProductClient product={product} />
